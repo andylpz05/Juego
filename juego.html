@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Preguntas Mejorado</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #2e2e2e;
+            color: white;
+        }
+        .question-container {
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 10px;
+            width: 50%;
+            background-color: #3e3e3e;
+        }
+        .question-container img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+            border-radius: 10px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .categories {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        label {
+            cursor: pointer;
+            display: block;
+        }
+        .red {
+            color: red;
+        }
+        #timer {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        .players {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Juego de Preguntas Mejorado</h1>
+
+    <!-- Ingreso de jugadores -->
+    <div id="playerSetup">
+        <h2>Introduce los nombres de los jugadores:</h2>
+        <textarea id="playerNames" placeholder="Introduce nombres separados por comas..." rows="3"></textarea>
+        <button onclick="startGame()">Iniciar Juego</button>
+    </div>
+
+    <!-- Controles del juego -->
+    <div class="controls" id="gameControls" style="display:none;">
+        <div class="categories">
+            <label><input type="checkbox" id="category1" checked> Categoría 1</label>
+            <label><input type="checkbox" id="category2" checked> Categoría 2</label>
+            <label><input type="checkbox" id="category3" checked> Categoría 3</label>
+            <label><input type="checkbox" id="category4" checked> Categoría 4</label>
+        </div>
+        <button onclick="generateQuestion()">Generar Pregunta</button>
+        <button onclick="resetGame()">Reiniciar Juego</button>
+    </div>
+
+    <!-- Temporizador -->
+    <div id="timer"></div>
+
+    <!-- Contenedor de la pregunta -->
+    <div class="question-container" id="questionDisplay">
+        <p>Haz clic en el botón para comenzar el juego.</p>
+    </div>
+
+    <!-- Selección de jugador -->
+    <div class="players" id="playerScoring" style="display:none;">
+        <h2>Selecciona quién respondió correctamente:</h2>
+        <div id="playerButtons"></div>
+    </div>
+
+    <!-- Sistema de puntuación -->
+    <div id="scoreboard"></div>
+
+    <script>
+        let players = [];
+        let scores = {};
+        let timer;
+        let timeLeft = 60;
+
+        // Preguntas organizadas por categorías
+        const questions = {
+            category1: [
+                { text: "Pregunta 1 de Categoría 1", image: "https://via.placeholder.com/400x200?text=Imagen+1+C1" },
+                { text: "Pregunta 2 de Categoría 1", image: "https://via.placeholder.com/400x200?text=Imagen+2+C1" }
+            ],
+            category2: [
+                { text: "Pregunta 1 de Categoría 2", image: "https://via.placeholder.com/400x200?text=Imagen+1+C2" },
+                { text: "Pregunta 2 de Categoría 2", image: "https://via.placeholder.com/400x200?text=Imagen+2+C2" }
+            ]
+        };
+
+        const usedQuestions = { category1: [], category2: [], category3: [], category4: [] };
+
+        function startGame() {
+            const playerNamesInput = document.getElementById("playerNames").value;
+            if (!playerNamesInput.trim()) {
+                alert("Por favor, introduce los nombres de los jugadores.");
+                return;
+            }
+
+            players = playerNamesInput.split(",").map(name => name.trim());
+            players.forEach(player => scores[player] = 0);
+
+            document.getElementById("playerSetup").style.display = "none";
+            document.getElementById("gameControls").style.display = "block";
+
+            updateScoreboard();
+        }
+
+        function resetGame() {
+            Object.keys(usedQuestions).forEach(category => usedQuestions[category] = []);
+            timeLeft = 60;
+            document.getElementById("questionDisplay").innerHTML = "<p>Haz clic en el botón para comenzar el juego.</p>";
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 60;
+            const timerDisplay = document.getElementById("timer");
+
+            timerDisplay.textContent = `Tiempo restante: ${timeLeft}s`;
+            timer = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `Tiempo restante: ${timeLeft}s`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    document.getElementById("questionDisplay").classList.add("red");
+                }
+            }, 1000);
+        }
+
+        function generateQuestion() {
+            clearInterval(timer);
+            document.getElementById("questionDisplay").classList.remove("red");
+
+            const activeCategories = [];
+            for (let i = 1; i <= 4; i++) {
+                const checkbox = document.getElementById(`category${i}`);
+                if (checkbox && checkbox.checked) {
+                    activeCategories.push(`category${i}`);
+                }
+            }
+
+            const availableQuestions = activeCategories.flatMap(category =>
+                questions[category]?.filter(q => !usedQuestions[category].includes(q)) || []
+            );
+
+            if (availableQuestions.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+                const selectedQuestion = availableQuestions[randomIndex];
+                const category = activeCategories.find(cat => questions[cat]?.includes(selectedQuestion));
+                usedQuestions[category].push(selectedQuestion);
+
+                document.getElementById("questionDisplay").innerHTML = `
+                    <p>${selectedQuestion.text}</p>
+                    <img src="${selectedQuestion.image}" alt="Imagen de la pregunta">
+                `;
+
+                startTimer();
+                showPlayerSelection();
+            } else {
+                document.getElementById("questionDisplay").innerHTML = `<p>No hay preguntas disponibles. Activa al menos una categoría o reinicia el juego.</p>`;
+            }
+        }
+
+        function showPlayerSelection() {
+            const playerButtons = players.map(player =>
+                `<button onclick="awardPoint('${player}')">${player}</button>`
+            ).join(" ");
+
+            document.getElementById("playerButtons").innerHTML = playerButtons;
+            document.getElementById("playerScoring").style.display = "block";
+        }
+
+        function awardPoint(player) {
+            scores[player]++;
+            updateScoreboard();
+            document.getElementById("playerScoring").style.display = "none";
+            clearInterval(timer);
+        }
+
+        function updateScoreboard() {
+            const scoreboard = Object.entries(scores).map(([player, score]) =>
+                `<p>${player}: ${score} puntos</p>`
+            ).join(" ");
+
+            document.getElementById("scoreboard").innerHTML = `<h2>Puntuaciones</h2>${scoreboard}`;
+        }
+    </script>
+</body>
+</html>
